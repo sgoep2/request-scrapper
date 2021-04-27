@@ -77,14 +77,25 @@ def create_dictionary_with_values(hoop):
     for i in dct_lst.values():  # string join: lists of lists of strings
         u.append(''.join(i))
 
-    return u
     # one entry of our qualification text:
     # u[2]
+    return u
 
 
 def jobs_in_pandas(gg, u):
+    """
+     Concatenate pandas objects along a particular axis with optional set logic
+    along the other axes.
+
+    Can also add a layer of hierarchical indexing on the concatenation axis,
+    which may be useful if the labels are the same (or overlapping) on
+    the passed axis number.
+
+    Place the DataFrames side by side axis=1
+    """
     jobs_ = pd.concat([pd.DataFrame(gg), pd.DataFrame(u, columns=['Qual_Text'])], axis=1)
-    jobs_.head()
+    # returns the first n rows for the object based on position.
+    # jobs_.head()
     return jobs_
 
 
@@ -141,7 +152,7 @@ def create_list_of_skills(jobs_):
 
 def create_file_with_data(jobs_):
     np.savetxt('np.txt', jobs_.values, fmt='%s')
-    filename = 'Indeed_scrape_Oct2020.txt'
+    filename = 'indeed_scrape.txt'
     file = open(filename, 'wb')
     pickle.dump(jobs_, file)
 
