@@ -10,14 +10,17 @@ import numpy as np
 
 def job_descriptions():
     datum_array_dict = []
-    for j in range(0, 10, 10):
+    for j in range(0, 30, 10):
         position, location = 'data scientist', 'california'
-        # y=requests.get('https://www.indeed.com/jobs?q=data+scientist&l=california&sort=date='+str(i))
+        #y=requests.get('https://www.indeed.com/jobs?q=data+scientist&l=california&sort=date='+str(i))
+        #y=requests.get(f'https://www.indeed.com/jobs?q={position}&l={location}&sort=date='+str(j))
+        
         y = requests.get('https://www.indeed.com/jobs?q={}&l={}&sort=date='.format(position, location) + str(j))
-
+        #print(y.content)
         sou = bsopa(y.text, 'lxml')
-
-        # for ii in sou.find_all('div', {'class': 'row'}):
+        #print(sou)
+        
+      # for ii in sou.find_all('div', {'class': 'row'}):
         for ii in sou.find_all('div', {"class": "jobsearch-SerpJobCard"}):
 
             # GET JOB TITLE
@@ -37,21 +40,26 @@ def job_descriptions():
                 location = ii.find('div', {"class": "location"})
                 location = location.text.strip()
 
-            k = ii.find('h2', {'class': "title"})
-            p = k.find(href=True)
-            v = p['href']
+            print("GET LOCATION")
+            print(location)
 
-            # links to iterate for qualification text
-            f_ = str(v).replace('&amp;', '&')
+        k = ii.find('h2', {'class': "title"})
+        print('title content')
+        print(k)
+        p = k.find(href=True)
+        v = p['href']
 
-            datum = {'job_title': job_title,
+        # links to iterate for qualification text
+        f_ = str(v).replace('&amp;', '&')
+
+        datum = {'job_title': job_title,
                      'company_name': company_name,
                      'location': location,
                      'summary': summary.text.strip(),
                      'post_Date': post_date.text,
                      'Qualification_link': f_}
 
-            datum_array_dict.append(datum)
+        datum_array_dict.append(datum)
 
     return datum_array_dict
 
@@ -99,7 +107,7 @@ def jobs_in_pandas(datum_array_dict, list_with_index):
     job_positions = pd.concat([pd.DataFrame(datum_array_dict),
                                pd.DataFrame(list_with_index, columns=['Qual_Text'])], axis=1)
     # returns the first n rows for the object based on position.
-    # jobs_.head()
+    #jobs_.head()
     return job_positions
 
 
@@ -168,10 +176,19 @@ def create_file_with_data(job_positions):
 
 
 gg = job_descriptions()
+#print(gg)
+
 hoop = get_job_qualifications(gg)
 u = create_dictionary_with_values(hoop)
+print(u)
 jobs_ = jobs_in_pandas(gg, u)
+print("##################")
+print(jobs_)
+
 v = post_by_date(jobs_)
+print(v)
 jobs_ = fix_posting_date(jobs_, v)
+print(jobs_)
 jobs_ = create_list_of_skills(jobs_)
-create_file_with_data(jobs_)
+print(jobs_)
+# create_file_with_data(jobs_)
