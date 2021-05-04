@@ -9,15 +9,15 @@ import numpy as np
 
 
 def job_descriptions():
-    gg = []
+    datum_array_dict = []
     for j in range(0, 10, 10):
         position, location = 'data scientist', 'california'
+        # y=requests.get('https://www.indeed.com/jobs?q=data+scientist&l=california&sort=date='+str(i))
         y = requests.get('https://www.indeed.com/jobs?q={}&l={}&sort=date='.format(position, location) + str(j))
 
-        # y=requests.get('https://www.indeed.com/jobs?q=data+scientist&l=california&sort=date='+str(i))
         sou = bsopa(y.text, 'lxml')
 
-        #     for ii in sou.find_all('div', {'class': 'row'}):
+        # for ii in sou.find_all('div', {'class': 'row'}):
         for ii in sou.find_all('div', {"class": "jobsearch-SerpJobCard"}):
 
             # GET JOB TITLE
@@ -40,7 +40,9 @@ def job_descriptions():
             k = ii.find('h2', {'class': "title"})
             p = k.find(href=True)
             v = p['href']
-            f_ = str(v).replace('&amp;', '&')  # links to iterate for qualification text
+
+            # links to iterate for qualification text
+            f_ = str(v).replace('&amp;', '&')
 
             datum = {'job_title': job_title,
                      'company_name': company_name,
@@ -49,40 +51,41 @@ def job_descriptions():
                      'post_Date': post_date.text,
                      'Qualification_link': f_}
 
-            gg.append(datum)
-    return gg
+            datum_array_dict.append(datum)
+
+    return datum_array_dict
 
 
-def get_job_qualifications(gg):
+def get_job_qualifications(datum_array_dict):
     # get all qualification page text: key=index, value=string of text for qualification
-    hoop = []
-    for i in range(len(gg)):
-        op = requests.get('https://www.indeed.com' + gg[i]['Qualification_link'])
+    job_qualifications = []
+    for i in range(len(datum_array_dict)):
+        op = requests.get(f"https://www.indeed.com{datum_array_dict[i]['Qualification_link']}")
         sou_ = bsopa(op.text, 'html.parser')
         for ii in sou_.find('div', {'class': 'jobsearch-jobDescriptionText'}):
             try:
-                hoop.append([i, ''.join(ii.text.strip())])
+                job_qualifications.append([i, ''.join(ii.text.strip())])
             except AttributeError:
-                hoop.append([i, ''])
-    return hoop
+                job_qualifications.append([i, ''])
+    return job_qualifications
 
 
-def create_dictionary_with_values(hoop):
+def create_dictionary_with_values(job_qualifications):
     # create dictionary with values as lists
     dct_lst = defaultdict(list)
-    for i in hoop:
+    for i in job_qualifications:
         dct_lst[i[0]].append(i[1])
 
-    u = []
+    list_with_index = []
     for i in dct_lst.values():  # string join: lists of lists of strings
-        u.append(''.join(i))
+        list_with_index.append(''.join(i))
 
     # one entry of our qualification text:
     # u[2]
-    return u
+    return list_with_index
 
 
-def jobs_in_pandas(gg, u):
+def jobs_in_pandas(datum_array_dict, list_with_index):
     """
      Concatenate pandas objects along a particular axis with optional set logic
     along the other axes.
@@ -93,15 +96,16 @@ def jobs_in_pandas(gg, u):
 
     Place the DataFrames side by side axis=1
     """
-    jobs_ = pd.concat([pd.DataFrame(gg), pd.DataFrame(u, columns=['Qual_Text'])], axis=1)
+    job_positions = pd.concat([pd.DataFrame(datum_array_dict),
+                               pd.DataFrame(list_with_index, columns=['Qual_Text'])], axis=1)
     # returns the first n rows for the object based on position.
     # jobs_.head()
-    return jobs_
+    return job_positions
 
 
-def post_by_date(jobs_):
-    v = []
-    for i in jobs_['post_Date']:
+def post_by_date(job_positions):
+    positions_sorted_by_date = []
+    for i in job_positions['post_Date']:
 
         if re.findall(r'[0-9]', i):
             # if the string has digits convert each entry to single string: ['3','0']->'30'
@@ -110,22 +114,23 @@ def post_by_date(jobs_):
             # convert string int to int and subtract from today's date and format
             g = (datetime.datetime.today() - datetime.timedelta(int(b))).strftime('%m-%d-%Y')
 
-            v.append(g)
+            positions_sorted_by_date.append(g)
 
-        else:  # this will contain strings like: 'just posted' or 'today' etc before convert
-            v.append(datetime.datetime.today().strftime('%m-%d-%Y'))
+        else:
+            # this will contain strings like: 'just posted' or 'today' etc before convert
+            positions_sorted_by_date.append(datetime.datetime.today().strftime('%m-%d-%Y'))
     # v[:5]
-    return v
+    return positions_sorted_by_date
 
 
-def fix_posting_date(jobs_, v):
+def fix_posting_date(job_positions, positions_sorted_by_date):
     # fixed posting date to date format instead of string: last column
-    jobs_['posting_date_fixed'] = v
-    jobs_.head()
-    return jobs_
+    job_positions['posting_date_fixed'] = v
+    job_positions.head()
+    return job_positions
 
 
-def create_list_of_skills(jobs_):
+def create_list_of_skills(job_positions):
     # Create a list of skills that you may have or general list
     buzz_words = ['Python', 'SQL', 'AWS', 'Machine learning', 'Deep learning', 'Text mining',
                   'NLP', 'SAS', 'Tableau', 'Sagemaker', 'Tensorflow', 'Spark', 'numpy', 'MongDB', 'PSQL',
@@ -141,20 +146,21 @@ def create_list_of_skills(jobs_):
     buzz_words_list = [x.lower() for x in buzz_words]  # convert list to lowercase to parse
 
     yo = []
-    for i in range(len(jobs_.Qual_Text)):
+    for i in range(len(job_positions.Qual_Text)):
         a = buzz_words_list
-        dd = [x for x in a if x in jobs_.Qual_Text[i].lower()]
+        dd = [x for x in a if x in job_positions.Qual_Text[i].lower()]
         yo.append(dd)
-    jobs_['skill_matches'] = yo
-    jobs_.head(7)
-    return jobs_
+
+    job_positions['skill_matches'] = yo
+    # job_positions.head(7)
+    return job_positions
 
 
-def create_file_with_data(jobs_):
-    np.savetxt('np.txt', jobs_.values, fmt='%s')
+def create_file_with_data(job_positions):
+    np.savetxt('np.txt', job_positions.values, fmt='%s')
     filename = 'indeed_scrape.txt'
     file = open(filename, 'wb')
-    pickle.dump(jobs_, file)
+    pickle.dump(job_positions, file)
 
     file_ = open(filename, 'rb')
     new_file_ = pickle.load(file_)
